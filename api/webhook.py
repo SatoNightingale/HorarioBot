@@ -5,13 +5,21 @@ from script import init_bot
 
 app = FastAPI()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    app.state.bot = await init_bot()
+APPLICATION = None
 
-@app.post('/api/webhook')
+@asynccontextmanager
+async def get_application():
+    global APPLICATION
+    if APPLICATION is None:
+        APPLICATION = await init_bot()
+        APPLICATION.initialize()
+    return APPLICATION
+
+@app.post('/')
 async def webhook(request: Request):
+    app_instance = await get_application()
+    print("llega update")
     data = await request.json()
-    update = Update.de_json(data, app.state.bot.bot)
-    await app.state.bot.process_update(update)
+    update = Update.de_json(data, app_instance.bot)
+    await app_instance.process_update(update)
     return {'ok': True}
