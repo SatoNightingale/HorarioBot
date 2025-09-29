@@ -96,6 +96,9 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #                            MAIN                            #
 # ---------------------------------------------------------- #
 
+# Pa setear webhook
+# curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook -d "url=https://<DOMAIN>/api/webhook"
+
 def init_bot():
     TOKEN = os.getenv('TOKEN')
 
