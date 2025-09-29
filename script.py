@@ -69,6 +69,7 @@ def que_toca_semana(hoy: date) -> list[Dia]:
 # ---------------------------------------------------------- #
 
 async def command_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("hoy")
     text = que_toca_hoy(convertir_fecha(update.message.date))
     if text:
         text = str(text)
@@ -78,6 +79,7 @@ async def command_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def command_manana(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("manana")
     text = que_toca_manana(convertir_fecha(update.message.date))
     if text:
         text = str(text)
@@ -87,6 +89,7 @@ async def command_manana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("semana")
     semana = que_toca_semana(convertir_fecha(update.effective_message.date))
     text = 'Horario de esta semana:\n' + '\n\n'.join([str(d) for d in semana])
     await context.bot.send_message(update.effective_chat.id, text)
