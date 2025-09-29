@@ -20,7 +20,8 @@ from dias import Dia, cargar_horario
 #                  Declaración de variables                  #
 # ---------------------------------------------------------- #
 
-webhook_url = 'https://horario-bot.vercel.app/api/webhook'
+# webhook_url = 'https://horario-bot.vercel.app/api/webhook'
+webhook_url = 'https://orarioot-satonightingale8475-5azc4xb4.leapcell.online/api/webhook'
 # webhook_url = 'localhost'
 
 dotenv.load_dotenv('.env')
@@ -98,7 +99,7 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def init_bot():
     TOKEN = os.getenv('TOKEN')
 
-    bot = Application.builder().token(TOKEN).build()
+    bot = Application.builder().token(TOKEN).build() # .rate_limiter()
 
     bot.add_handler(CommandHandler('hoy', command_hoy))
     bot.add_handler(CommandHandler('manana', command_manana))
@@ -108,13 +109,13 @@ async def init_bot():
     
     # port = os.environ.get('PORT')
 
-    # bot.run_webhook(
-    #     listen='0.0.0.0',
-    #     port=port,
-    #     url_path='',
-    #     webhook_url=webhook_url,
-    #     allowed_updates=Update.ALL_TYPES
-    # )
+    bot.run_webhook(
+        listen='0.0.0.0',
+        port=8080,
+        url_path='/api/webhook',
+        webhook_url=webhook_url,
+        allowed_updates=Update.ALL_TYPES
+    )
 
     # bot.run_polling()
 
