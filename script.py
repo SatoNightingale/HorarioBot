@@ -20,7 +20,7 @@ from dias import Dia, cargar_horario
 #                  Declaración de variables                  #
 # ---------------------------------------------------------- #
 
-webhook_url = 'https://horario-bot.vercel.app/'
+webhook_url = 'https://horario-bot.vercel.app/api/webhook'
 # webhook_url = 'localhost'
 
 dotenv.load_dotenv('.env')
