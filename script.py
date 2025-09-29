@@ -8,6 +8,7 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
+    AIORateLimiter
 )
 import dotenv
 import os
@@ -69,7 +70,7 @@ def que_toca_semana(hoy: date) -> list[Dia]:
 # ---------------------------------------------------------- #
 
 async def command_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("hoy")
+    logging.info("hoy")
     text = que_toca_hoy(convertir_fecha(update.message.date))
     if text:
         text = str(text)
@@ -79,7 +80,7 @@ async def command_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def command_manana(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("manana")
+    logging.info("manana")
     text = que_toca_manana(convertir_fecha(update.message.date))
     if text:
         text = str(text)
@@ -89,7 +90,7 @@ async def command_manana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("semana")
+    logging.info("semana")
     semana = que_toca_semana(convertir_fecha(update.effective_message.date))
     text = 'Horario de esta semana:\n' + '\n\n'.join([str(d) for d in semana])
     await context.bot.send_message(update.effective_chat.id, text)
@@ -105,7 +106,7 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def init_bot():
     TOKEN = os.getenv('TOKEN')
 
-    bot = Application.builder().token(TOKEN).build() # .rate_limiter()
+    bot = Application.builder().token(TOKEN).rate_limiter(AIORateLimiter()).build() # .rate_limiter()
 
     bot.add_handler(CommandHandler('hoy', command_hoy))
     bot.add_handler(CommandHandler('manana', command_manana))
