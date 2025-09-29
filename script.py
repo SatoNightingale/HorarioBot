@@ -15,6 +15,8 @@ import logging
 from dias import Dia, cargar_horario
 
 
+webhook_url = 'https://horario-bot.vercel.app/'
+
 dotenv.load_dotenv('.env')
 
 cuba_tz = pytz.timezone('America/Havana')
@@ -56,17 +58,17 @@ def main():
     bot.add_handler(CommandHandler('manana', command_manana))
     bot.add_handler(CommandHandler('semana', command_semana))
 
-    # port = os.environ.get('PORT')
+    port = os.environ.get('PORT')
 
-    # bot.run_webhook(
-    #     listen='0.0.0.0',
-    #     port=port,
-    #     url_path='',
-    #     webhook_url='localhost',
-    #     allowed_updates=Update.ALL_TYPES
-    # )
+    bot.run_webhook(
+        listen='0.0.0.0',
+        port=port,
+        url_path='',
+        webhook_url=webhook_url,
+        allowed_updates=Update.ALL_TYPES
+    )
 
-    bot.run_polling()
+    # bot.run_polling()
 
     logging.info("Log: Iniciado")
     print("Iniciado")
