@@ -7,22 +7,35 @@ from telegram import (
 from telegram.ext import (
     Application,
     CommandHandler,
-    ContextTypes
+    ContextTypes,
 )
 import dotenv
 import os
 import logging
+import asyncio
 from dias import Dia, cargar_horario
 
 
+# ---------------------------------------------------------- #
+#                  Declaración de variables                  #
+# ---------------------------------------------------------- #
+
 webhook_url = 'https://horario-bot.vercel.app/'
+# webhook_url = 'localhost'
 
 dotenv.load_dotenv('.env')
+
+bot: Application
 
 cuba_tz = pytz.timezone('America/Havana')
 
 datos = json.load(open('datos.json', encoding='utf-8'))
 horario = cargar_horario()
+
+
+# ---------------------------------------------------------- #
+#                     Funciones útiles                       #
+# ---------------------------------------------------------- #
 
 def convertir_fecha(fecha: datetime) -> date:
     fecha_convertida = fecha.astimezone(cuba_tz)
@@ -49,30 +62,10 @@ def que_toca_semana(hoy: date) -> list[Dia]:
     return dias_semana
 
 
-def main():
-    TOKEN = os.getenv('TOKEN')
 
-    bot = Application.builder().token(TOKEN).build()
-
-    bot.add_handler(CommandHandler('hoy', command_hoy))
-    bot.add_handler(CommandHandler('manana', command_manana))
-    bot.add_handler(CommandHandler('semana', command_semana))
-
-    port = os.environ.get('PORT')
-
-    bot.run_webhook(
-        listen='0.0.0.0',
-        port=port,
-        url_path='',
-        webhook_url=webhook_url,
-        allowed_updates=Update.ALL_TYPES
-    )
-
-    # bot.run_polling()
-
-    logging.info("Log: Iniciado")
-    print("Iniciado")
-
+# ---------------------------------------------------------- #
+#                Funciones de comandos del bot               #
+# ---------------------------------------------------------- #
 
 async def command_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = que_toca_hoy(convertir_fecha(update.message.date))
@@ -98,5 +91,40 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(update.effective_chat.id, text)
 
 
+# ---------------------------------------------------------- #
+#                            MAIN                            #
+# ---------------------------------------------------------- #
+
+async def init_bot():
+    TOKEN = os.getenv('TOKEN')
+
+    bot = Application.builder().token(TOKEN).build()
+
+    bot.add_handler(CommandHandler('hoy', command_hoy))
+    bot.add_handler(CommandHandler('manana', command_manana))
+    bot.add_handler(CommandHandler('semana', command_semana))
+
+    success = await bot.bot.set_webhook(webhook_url)
+
+    # port = os.environ.get('PORT')
+
+    # bot.run_webhook(
+    #     listen='0.0.0.0',
+    #     port=port,
+    #     url_path='',
+    #     webhook_url=webhook_url,
+    #     allowed_updates=Update.ALL_TYPES
+    # )
+
+    # bot.run_polling()
+
+    if success:
+        logging.info("✅ Iniciado")
+    else:
+        logging.error("❌ Falló al iniciar el bot")
+
+    return bot
+
+
 if __name__ == "__main__":
-    main()
+    asyncio.run(init_bot())
