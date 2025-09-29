@@ -104,7 +104,7 @@ async def init_bot():
     bot.add_handler(CommandHandler('manana', command_manana))
     bot.add_handler(CommandHandler('semana', command_semana))
 
-    success = await bot.bot.set_webhook(webhook_url)
+    # success = await bot.bot.set_webhook(webhook_url)
     
     # port = os.environ.get('PORT')
 
@@ -118,10 +118,10 @@ async def init_bot():
 
     # bot.run_polling()
 
-    if success:
-        logging.info("✅ Iniciado")
-    else:
-        logging.error("❌ Falló al iniciar el bot")
+    # if success:
+    #     logging.info("✅ Iniciado")
+    # else:
+    #     logging.error("❌ Falló al iniciar el bot")
 
     return bot
 
