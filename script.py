@@ -8,13 +8,15 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    AIORateLimiter
+    AIORateLimiter,
+    Updater
 )
 import dotenv
 import os
 import logging
 import asyncio
 from dias import Dia, cargar_horario
+from pellizco import keep_alive
 
 
 # ---------------------------------------------------------- #
@@ -116,15 +118,15 @@ def init_bot():
     
     # port = os.environ.get('PORT')
 
-    bot.run_webhook(
-        listen='0.0.0.0',
-        port=8080,
-        url_path='/api/webhook',
-        webhook_url=webhook_url,
-        allowed_updates=Update.ALL_TYPES
-    )
+    # bot.run_webhook(
+    #     listen='0.0.0.0',
+    #     port=8080,
+    #     url_path='/api/webhook',
+    #     webhook_url=webhook_url,
+    #     allowed_updates=Update.ALL_TYPES
+    # )
 
-    # bot.run_polling()
+    bot.run_polling()
 
     # if success:
     #     logging.info("✅ Iniciado")
