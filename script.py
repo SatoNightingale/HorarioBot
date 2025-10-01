@@ -61,6 +61,8 @@ async def index(request):
 aio_app.router.add_get("/", index)
 
 async def telegram_post(request):
+    global telegram_app
+
     try:
         data = await request.json()
     except Exception:
@@ -146,6 +148,7 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_bot():
     webhook_url = f'{RENDER_URL}{WEBHOOK_PATH}'
 
+    global telegram_app
     telegram_app = Application.builder().token(TOKEN).build()
 
     telegram_app.add_handler(CommandHandler('hoy', command_hoy))
@@ -169,7 +172,4 @@ async def start_bot():
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(start_bot())
-    except KeyboardInterrupt:
-        pass
+    asyncio.run(start_bot())
