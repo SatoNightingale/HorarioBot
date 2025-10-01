@@ -35,7 +35,7 @@ WEBHOOK_PATH = f"/webhook/{TOKEN}"
 
 dotenv.load_dotenv('.env')
 
-bot: Application
+telegram_app: Application
 
 cuba_tz = pytz.timezone('America/Havana')
 
@@ -66,9 +66,9 @@ async def telegram_post(request):
     except Exception:
         return web.Response(status=400, text="bad request")
 
-    update = Update.de_json(data, bot.bot)
+    update = Update.de_json(data, telegram_app.bot)
     # Enviar el update para que lo procese el dispatcher
-    await bot.update_queue.put(update)
+    await telegram_app.update_queue.put(update)
     return web.Response(status=200, text="OK")
 
 aio_app.router.add_post(WEBHOOK_PATH, telegram_post)
@@ -146,15 +146,15 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_bot():
     webhook_url = f'{RENDER_URL}{WEBHOOK_PATH}'
 
-    bot = Application.builder().token(TOKEN).build()
+    telegram_app = Application.builder().token(TOKEN).build()
 
-    bot.add_handler(CommandHandler('hoy', command_hoy))
-    bot.add_handler(CommandHandler('manana', command_manana))
-    bot.add_handler(CommandHandler('semana', command_semana))
+    telegram_app.add_handler(CommandHandler('hoy', command_hoy))
+    telegram_app.add_handler(CommandHandler('manana', command_manana))
+    telegram_app.add_handler(CommandHandler('semana', command_semana))
 
-    await bot.initialize()
-    await bot.bot.set_webhook(webhook_url)
-    await bot.start()
+    await telegram_app.initialize()
+    await telegram_app.bot.set_webhook(webhook_url)
+    await telegram_app.start()
 
     runner = web.AppRunner(aio_app)
     await runner.setup()
