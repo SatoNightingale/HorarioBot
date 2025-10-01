@@ -23,15 +23,19 @@ from dias import Dia, cargar_horario
 #                  Declaración de variables                  #
 # ---------------------------------------------------------- #
 
+TOKEN = os.getenv('TOKEN')
+PORT = os.getenv("PORT", '8080')
+
 # webhook_url = 'https://horario-bot.vercel.app/api/webhook'
 # webhook_url = 'https://orarioot-satonightingale8475-5azc4xb4.leapcell.online/api/webhook'
 RENDER_URL = 'https://horariobot.onrender.com'
 
 HEALTH_PATH = "/healthz"
+WEBHOOK_PATH = f"/webhook/{TOKEN}"
 
 dotenv.load_dotenv('.env')
 
-# bot: Application
+bot: Application
 
 cuba_tz = pytz.timezone('America/Havana')
 
@@ -55,6 +59,19 @@ async def index(request):
     return web.Response(text="Servicio telegram en Render", status=200)
 
 aio_app.router.add_get("/", index)
+
+async def telegram_post(request):
+    try:
+        data = await request.json()
+    except Exception:
+        return web.Response(status=400, text="bad request")
+
+    update = Update.de_json(data, bot.bot)
+    # Enviar el update para que lo procese el dispatcher
+    await bot.update_queue.put(update)
+    return web.Response(status=200, text="OK")
+
+aio_app.router.add_post(WEBHOOK_PATH, telegram_post)
 
 
 
@@ -127,10 +144,6 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook -d "url=https://<DOMAIN>/api/webhook"
 
 async def start_bot():
-    TOKEN = os.getenv('TOKEN')
-    PORT = os.getenv("PORT", '8080')
-    WEBHOOK_PATH = f"/webhook/{TOKEN}"
-
     webhook_url = f'{RENDER_URL}{WEBHOOK_PATH}'
 
     bot = Application.builder().token(TOKEN).build()
@@ -147,19 +160,6 @@ async def start_bot():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
-
-    async def telegram_post(request):
-        try:
-            data = await request.json()
-        except Exception:
-            return web.Response(status=400, text="bad request")
-
-        update = Update.de_json(data, bot.bot)
-        # Enviar el update para que lo procese el dispatcher
-        await bot.update_queue.put(update)
-        return web.Response(status=200, text="OK")
-
-    aio_app.router.add_post(WEBHOOK_PATH, telegram_post)
 
     logging.info("✅ Iniciado")
 
