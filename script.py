@@ -13,9 +13,9 @@ import dotenv
 import os
 import logging
 import asyncio
-from fastapi import FastAPI
-from starlette.responses import PlainTextResponse
-import uvicorn
+from aiohttp import web
+# from starlette.responses import PlainTextResponse
+# import uvicorn
 from dias import Dia, cargar_horario
 
 
@@ -25,18 +25,37 @@ from dias import Dia, cargar_horario
 
 # webhook_url = 'https://horario-bot.vercel.app/api/webhook'
 # webhook_url = 'https://orarioot-satonightingale8475-5azc4xb4.leapcell.online/api/webhook'
-webhook_url = 'https://horariobot.onrender.com'
+RENDER_URL = 'https://horariobot.onrender.com'
+
+HEALTH_PATH = "/healthz"
 
 dotenv.load_dotenv('.env')
 
-bot: Application
-
-server_pellizco = FastAPI()
+# bot: Application
 
 cuba_tz = pytz.timezone('America/Havana')
 
 datos = json.load(open('datos.json', encoding='utf-8'))
 horario = cargar_horario()
+
+
+# ---------------------------------------------------------- #
+#                         ASYNCIO_APP                        #
+# ---------------------------------------------------------- #
+
+aio_app = web.Application()
+
+async def health(request):
+    return web.Response(text="OK", status=200)
+
+aio_app.router.add_get(HEALTH_PATH, health)
+
+# Opcional: una ruta GET en la raíz que devuelva algo simple
+async def index(request):
+    return web.Response(text="Servicio telegram en Render", status=200)
+
+aio_app.router.add_get("/", index)
+
 
 
 # ---------------------------------------------------------- #
@@ -109,6 +128,10 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_bot():
     TOKEN = os.getenv('TOKEN')
+    PORT = os.getenv("PORT", '8080')
+    WEBHOOK_PATH = f"/webhook/{TOKEN}"
+
+    webhook_url = f'{RENDER_URL}{WEBHOOK_PATH}'
 
     bot = Application.builder().token(TOKEN).build()
 
@@ -116,33 +139,37 @@ async def start_bot():
     bot.add_handler(CommandHandler('manana', command_manana))
     bot.add_handler(CommandHandler('semana', command_semana))
 
-    port = os.environ.get('PORT')
+    await bot.initialize()
+    await bot.bot.set_webhook(webhook_url)
+    await bot.start()
 
-    asyncio.create_task(bot.run_webhook(
-        listen='0.0.0.0',
-        port=port,
-        url_path='',
-        webhook_url=webhook_url,
-        allowed_updates=Update.ALL_TYPES
-    ))
+    runner = web.AppRunner(aio_app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', PORT)
+    await site.start()
+
+    async def telegram_post(request):
+        try:
+            data = await request.json()
+        except Exception:
+            return web.Response(status=400, text="bad request")
+
+        update = Update.de_json(data, bot.bot)
+        # Enviar el update para que lo procese el dispatcher
+        await bot.update_queue.put(update)
+        return web.Response(status=200, text="OK")
+
+    aio_app.router.add_post(WEBHOOK_PATH, telegram_post)
 
     logging.info("✅ Iniciado")
 
-
-async def start_server():
-    config = uvicorn.Config(server_pellizco, host='0.0.0.0', port=8080)
-    server = uvicorn.Server(config)
-    await server.serve()
-
-
-@server_pellizco.get('/', response_class=PlainTextResponse)
-async def ping():
-    return 'Bot pellizcado'
-
-
-async def main():
-    await asyncio.gather(start_bot(), start_server())
+    # Mantener el servicio vivo
+    while True:
+        await asyncio.sleep(3600)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(start_bot())
+    except KeyboardInterrupt:
+        pass
