@@ -9,13 +9,13 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
     AIORateLimiter,
+    Updater
 )
 import dotenv
 import os
 import logging
 import asyncio
 from dias import Dia, cargar_horario
-from pellizco import keep_alive
 
 
 # ---------------------------------------------------------- #
@@ -132,6 +132,19 @@ def init_bot():
     # else:
     #     logging.error("❌ Falló al iniciar el bot")
 
+def main():
+    TOKEN = os.getenv("TOKEN")
+    
+    updater = Updater(TOKEN)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler('hoy', command_hoy))
+    dp.add_handler(CommandHandler('manana', command_manana))
+    dp.add_handler(CommandHandler('semana', command_semana))
+    
+    updater.start_polling()
+    updater.idle()
+
 
 if __name__ == "__main__":
-    init_bot()
+    main()
