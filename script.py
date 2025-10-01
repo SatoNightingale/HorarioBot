@@ -8,13 +8,14 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    AIORateLimiter,
-    Updater
 )
 import dotenv
 import os
 import logging
 import asyncio
+from fastapi import FastAPI
+from starlette.responses import PlainTextResponse
+import uvicorn
 from dias import Dia, cargar_horario
 
 
@@ -29,6 +30,8 @@ webhook_url = 'https://horariobot.onrender.com'
 dotenv.load_dotenv('.env')
 
 bot: Application
+
+server_pellizco = FastAPI()
 
 cuba_tz = pytz.timezone('America/Havana')
 
@@ -104,7 +107,7 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Pa setear webhook
 # curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook -d "url=https://<DOMAIN>/api/webhook"
 
-def init_bot():
+async def start_bot():
     TOKEN = os.getenv('TOKEN')
 
     bot = Application.builder().token(TOKEN).build()
@@ -113,38 +116,33 @@ def init_bot():
     bot.add_handler(CommandHandler('manana', command_manana))
     bot.add_handler(CommandHandler('semana', command_semana))
 
-    # success = await bot.bot.set_webhook(webhook_url)
-    
     port = os.environ.get('PORT')
 
-    bot.run_webhook(
+    asyncio.create_task(bot.run_webhook(
         listen='0.0.0.0',
         port=port,
         url_path='',
         webhook_url=webhook_url,
         allowed_updates=Update.ALL_TYPES
-    )
+    ))
 
-    # bot.run_polling()
-
-    # if success:
     logging.info("✅ Iniciado")
-    # else:
-    #     logging.error("❌ Falló al iniciar el bot")
 
-def main():
-    TOKEN = os.getenv("TOKEN")
-    
-    updater = Updater(TOKEN)
-    dp = updater.dispatcher
 
-    dp.add_handler(CommandHandler('hoy', command_hoy))
-    dp.add_handler(CommandHandler('manana', command_manana))
-    dp.add_handler(CommandHandler('semana', command_semana))
-    
-    updater.start_polling()
-    updater.idle()
+async def start_server():
+    config = uvicorn.Config(server_pellizco, host='0.0.0.0', port=8080)
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+@server_pellizco.get('/', response_class=PlainTextResponse)
+async def ping():
+    return 'Bot pellizcado'
+
+
+async def main():
+    await asyncio.gather(start_bot(), start_server())
 
 
 if __name__ == "__main__":
-    init_bot()
+    asyncio.run(main())

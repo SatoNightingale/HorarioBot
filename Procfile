@@ -1,0 +1,1 @@
+web: uvicorn script:server_pellizco --host=0.0.0.0 --port=${PORT}
