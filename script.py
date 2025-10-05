@@ -1,80 +1,25 @@
-import json
 from datetime import date, timedelta, datetime
 import pytz
-from telegram import (
-    Update
-)
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-)
-import dotenv
-import os
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+import sqlite3
 import logging
-import asyncio
-from aiohttp import web
-# from starlette.responses import PlainTextResponse
-# import uvicorn
-from dias import Dia, cargar_horario
+import traceback
+from dias import Dia, Turno
+from sql_utils import get_db_list
 
 
 # ---------------------------------------------------------- #
-#                  Declaración de variables                  #
+#                          Globales                          #
 # ---------------------------------------------------------- #
 
-TOKEN = os.getenv('TOKEN')
-PORT = os.getenv("PORT", '8080')
-
-# webhook_url = 'https://horario-bot.vercel.app/api/webhook'
-# webhook_url = 'https://orarioot-satonightingale8475-5azc4xb4.leapcell.online/api/webhook'
-RENDER_URL = 'https://horariobot.onrender.com'
-
-HEALTH_PATH = "/healthz"
-WEBHOOK_PATH = f"/webhook/{TOKEN}"
-
-dotenv.load_dotenv('.env')
-
-telegram_app: Application
-
-cuba_tz = pytz.timezone('America/Havana')
-
-datos = json.load(open('datos.json', encoding='utf-8'))
-horario = cargar_horario()
-
-
-# ---------------------------------------------------------- #
-#                         ASYNCIO_APP                        #
-# ---------------------------------------------------------- #
-
-aio_app = web.Application()
-
-async def health(request):
-    return web.Response(text="OK", status=200)
-
-aio_app.router.add_get(HEALTH_PATH, health)
-
-# Opcional: una ruta GET en la raíz que devuelva algo simple
-async def index(request):
-    return web.Response(text="Servicio telegram en Render", status=200)
-
-aio_app.router.add_get("/", index)
-
-async def telegram_post(request):
-    global telegram_app
-
-    try:
-        data = await request.json()
-    except Exception:
-        return web.Response(status=400, text="bad request")
-
-    update = Update.de_json(data, telegram_app.bot)
-    # Enviar el update para que lo procese el dispatcher
-    await telegram_app.update_queue.put(update)
-    return web.Response(status=200, text="OK")
-
-aio_app.router.add_post(WEBHOOK_PATH, telegram_post)
-
+def initialize_script():
+    global cuba_tz, connection
+    # Zona horaria de Cuba
+    cuba_tz = pytz.timezone('America/Havana')
+    # horario = cargar_horario()
+    connection = sqlite3.connect("datos.db")
 
 
 # ---------------------------------------------------------- #
@@ -87,8 +32,13 @@ def convertir_fecha(fecha: datetime) -> date:
 
 
 def que_toca_dia(fecha: date) -> Dia | None:
-    if fecha.isoformat() in horario:
-        return horario[fecha.isoformat()]
+    data_turnos = get_db_list('Turno_Clase', ['num_turno', 'id_asig', 'id_mod', 'id_otro'], fecha.isoformat(), connection, prim_key_name='fecha', as_string=True)
+
+    if len(data_turnos) > 0:
+        turnos = []
+        for tupla in data_turnos:
+            turnos.append(Turno(fecha, tupla[0], tupla[1], tupla[2], tupla[3]))
+        return Dia(fecha, turnos)
     else:
         return None
 
@@ -106,70 +56,43 @@ def que_toca_semana(hoy: date) -> list[Dia]:
     return dias_semana
 
 
-
 # ---------------------------------------------------------- #
 #                Funciones de comandos del bot               #
 # ---------------------------------------------------------- #
 
 async def command_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.info("hoy")
-    text = que_toca_hoy(convertir_fecha(update.message.date))
-    if text:
-        text = str(text)
-    else:
-        text = 'Hoy no hay clases'
-    await context.bot.send_message(update.effective_chat.id, text)
+    try:
+        text = que_toca_hoy(convertir_fecha(update.message.date))
+        if text:
+            text = str(text)
+        else:
+            text = 'Hoy no hay clases'
+        await context.bot.send_message(update.effective_chat.id, text, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        tb_str = traceback.format_exc()
+        await context.bot.send_message(update.effective_chat.id, f"Ha ocurrido un error:\n{type(e).__name__} - {e}\n{tb_str}")
 
 
 async def command_manana(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.info("manana")
-    text = que_toca_manana(convertir_fecha(update.message.date))
-    if text:
-        text = str(text)
-    else:
-        text = 'Mañana no hay clases'
-    await context.bot.send_message(update.effective_chat.id, text)
+    try:
+        logging.info("manana")
+        text = que_toca_manana(convertir_fecha(update.message.date))
+        if text:
+            text = str(text)
+        else:
+            text = 'Mañana no hay clases'
+        await context.bot.send_message(update.effective_chat.id, text, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        tb_str = traceback.format_exc()
+        await context.bot.send_message(update.effective_chat.id, f"Ha ocurrido un error:\n{type(e).__name__} - {e}\n{tb_str}")
 
 
 async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.info("semana")
-    semana = que_toca_semana(convertir_fecha(update.effective_message.date))
-    text = 'Horario de esta semana:\n' + '\n\n'.join([str(d) for d in semana])
-    await context.bot.send_message(update.effective_chat.id, text)
-
-
-# ---------------------------------------------------------- #
-#                            MAIN                            #
-# ---------------------------------------------------------- #
-
-# Pa setear webhook
-# curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook -d "url=https://<DOMAIN>/api/webhook"
-
-async def start_bot():
-    webhook_url = f'{RENDER_URL}{WEBHOOK_PATH}'
-
-    global telegram_app
-    telegram_app = Application.builder().token(TOKEN).build()
-
-    telegram_app.add_handler(CommandHandler('hoy', command_hoy))
-    telegram_app.add_handler(CommandHandler('manana', command_manana))
-    telegram_app.add_handler(CommandHandler('semana', command_semana))
-
-    await telegram_app.initialize()
-    await telegram_app.bot.set_webhook(webhook_url)
-    await telegram_app.start()
-
-    runner = web.AppRunner(aio_app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', PORT)
-    await site.start()
-
-    logging.info("✅ Iniciado")
-
-    # Mantener el servicio vivo
-    while True:
-        await asyncio.sleep(3600)
-
-
-if __name__ == "__main__":
-    asyncio.run(start_bot())
+    try:
+        logging.info("semana")
+        semana = que_toca_semana(convertir_fecha(update.effective_message.date))
+        text = 'Horario de esta semana:\n' + '\n\n'.join([str(d) for d in semana])
+        await context.bot.send_message(update.effective_chat.id, text, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        tb_str = traceback.format_exc()
+        await context.bot.send_message(update.effective_chat.id, f"Ha ocurrido un error:\n{type(e).__name__} - {e}\n{tb_str}")

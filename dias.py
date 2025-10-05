@@ -1,10 +1,7 @@
-import json
-from datetime import date, timedelta
+from datetime import date
+import sqlite3
+from sql_utils import get_db_entry, get_db_list
 
-datos = json.load(open('datos.json', encoding='utf-8'))
-
-asignaturas = datos["asignaturas"]
-modificadores = datos["modificadores"]
 
 nombre_turnos = {
     1: "Primera",
@@ -38,37 +35,76 @@ dias_semana = {
 }
 
 
-
 class Turno:
-    def __init__(self, idAsig='0', /, otro=None, CP=False, Sem=False, Lab=False, Tall=False, Visit=False, Eval=False, LabC=False, EntT=False, RecT=False, modifs=None):
-        self.id_asignatura = idAsig
-        self.otro = otro
-        if not modifs:
-            self.modificadores = [CP, Sem, Lab, Tall, Visit, Eval, LabC, EntT, RecT]
-        else:
-            self.modificadores = modifs
-    
+    def __init__(self, fecha, num, /, id_asig=None, modif=None, otro=None):
+        self.fecha = fecha
+        self.num = num
+
+        self.id_asignatura = id_asig
+        self.asignatura = None
+        self.modificador = None
+        self.es_cp = modif == '0'
+        self.otro = None
+
+        con = sqlite3.connect("datos.db")
+
+        if id_asig and id_asig != 'NULL' and id_asig != 0:
+            self.asignatura = get_db_entry('Asignatura', ['Nombre'], id_asig, con)[0]
+            if modif != 'NULL':
+                self.modificador = get_db_entry('Modificador_Turno', ['descripcion'], modif, con, prim_key_name='simbolo', as_string=True)[0]
+        elif otro != 'NULL':
+            self.otro = get_db_entry('Otros', ['descripcion'], otro, con, prim_key_name='simbolo', as_string=True)[0]
+
+        con.close()
+
     def __str__(self):
-        if self.id_asignatura != '0':
-            nombre_turno = asignaturas[self.id_asignatura]
-        if self.otro:
-            nombre_turno = self.otro
+        turno_texto = 'Libre'
+
+        if self.asignatura:
+            turno_texto = self.asignatura
+            if self.modificador:
+                turno_texto = f"{self.asignatura} ({self.modificador})"
+            if not self.es_cp:
+                profesor = self.profesor_principal()
+                turno_texto += f"\n  Profesor: {profesor}"
+            else:
+                profesores = self.profesores_clase_practica()
+                if len(profesores) > 0:
+                    profes_text = '\n'.join([f'  - {p}' for p in profesores])
+                    turno_texto += f"\n  Profesor de clase práctica:\n{profes_text}"
+        elif self.otro:
+            turno_texto = self.otro
         
-        extra = []
-
-        for i, mod in enumerate(self.modificadores):
-            if mod:
-                extra.append(list(modificadores.values())[i])
-
-        mods = ', '.join(extra)
-
-        if len(extra) > 0:
-            mods = f" ({mods})"
-
-        return f"{nombre_turno}{mods}"
+        return turno_texto
 
     def esLibre(self):
-        return self.id_asignatura == '0' and not self.otro
+        return not self.asignatura and not self.otro
+    
+    def profesor_principal(self):
+        con = sqlite3.connect("datos.db")
+        cur = con.cursor()
+        query = f"""SELECT Profesor.Nombre
+            FROM Asignatura, Profesor
+            WHERE Asignatura.id_prof_princ = Profesor.id
+            AND Asignatura.id = {self.id_asignatura}"""
+        query_result = cur.execute(query)
+        nombre_prof = query_result.fetchone()[0]
+        con.close()
+        return nombre_prof
+    
+    def profesores_clase_practica(self):
+        con = sqlite3.connect("datos.db")
+        cur = con.cursor()
+        query = f"""SELECT Profesor.Nombre
+            FROM Asignatura, imparte_clase_practica, Profesor
+            WHERE Asignatura.id = imparte_clase_practica.id_asig
+            AND Profesor.id = imparte_clase_practica.id_prof
+            AND Asignatura.id = {self.id_asignatura}"""
+        query_result = cur.execute(query)
+        query_profes = query_result.fetchall()
+        list_profes = [str(x[0]) for x in query_profes]
+        con.close()
+        return list_profes
 
 
 
@@ -81,23 +117,33 @@ class Dia:
         fecha = f"{dias_semana[self.fecha.weekday()].capitalize()}, {self.fecha.day} de {meses[self.fecha.month]} de {self.fecha.year}"
 
         manana = ['Mañana']
+        manana_libre = True
         for i, turno in enumerate(self.turnos[0:3]):
+            manana.append(f"{nombre_turnos[i+1]}: {turno}")
             if not turno.esLibre():
-                manana.append(f"{nombre_turnos[i+1]}: {turno}")
+                manana_libre = False
         
         tarde = ['Tarde']
+        tarde_libre = True
         for i, turno in enumerate(self.turnos[3:6]):
+            tarde.append(f"{nombre_turnos[i+1]}: {turno}")
             if not turno.esLibre():
-                tarde.append(f"{nombre_turnos[i+1]}: {turno}")
+                tarde_libre = False
         
-        if len(manana) == 1: manana.clear()
-        if len(tarde) == 1: tarde.clear()
+        if manana_libre: manana = ['Mañana', '\tLibre']
+        if tarde_libre: tarde = ['Tarde', '\tLibre']
 
         ret = '\n'.join([fecha] + manana + tarde)
         return ret
 
 
 def cargar_horario():
+    import json
+
+    datos = json.load(open('datos.json', encoding='utf-8'))
+    asignaturas = datos["asignaturas"]
+    modificadores = datos["modificadores"]
+
     horario = datos['Horario']
     dias = {}
 
