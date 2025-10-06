@@ -66,12 +66,12 @@ class Turno:
                 turno_texto = f"{self.asignatura} ({self.modificador})"
             if not self.es_cp:
                 profesor = self.profesor_principal()
-                turno_texto += f"\n\t<i>Profesor</i>: {profesor}"
+                turno_texto += f"\n    <i>Profesor</i>: {profesor}"
             else:
                 profesores = self.profesores_clase_practica()
                 if len(profesores) > 0:
-                    profes_text = '\n'.join([f'\t• {p}' for p in profesores])
-                    turno_texto += f"\n\t<i>Profesor de clase práctica</i>:\n{profes_text}"
+                    profes_text = '\n'.join([f'    • {p}' for p in profesores])
+                    turno_texto += f"\n    <i>Profesor de clase práctica</i>:\n{profes_text}"
         elif self.otro:
             turno_texto = self.otro
         
@@ -130,8 +130,8 @@ class Dia:
             if not turno.esLibre():
                 tarde_libre = False
         
-        if manana_libre: manana = ['<strong><u>🌅 Mañana</u></strong>', '\t👋 Libre']
-        if tarde_libre: tarde = ['<strong><u>🌄 Tarde</u></strong>', '\t👋 Libre']
+        if manana_libre: manana = ['<strong><u>🌅 Mañana</u></strong>', '    👋 Libre']
+        if tarde_libre: tarde = ['<strong><u>🌄 Tarde</u></strong>', '    👋 Libre']
 
         ret = '\n'.join([fecha] + manana + tarde)
         return ret
