@@ -121,6 +121,7 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tb_str = traceback.format_exc()
         await context.bot.send_message(update.effective_chat.id, f"Ha ocurrido un error:\n{type(e).__name__} - {e}\n{tb_str}")
 
+
 async def command_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with open("P42doCC0510.xlsx", 'rb') as excel:
         await context.bot.send_document(update.effective_chat.id, document=excel)
