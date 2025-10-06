@@ -1,11 +1,12 @@
 import dotenv
 import os
 import logging
+logging.info("Probando que funciona el logging")
 import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler
 from aiohttp import web
-from script import initialize_script, command_hoy, command_manana, command_semana
+from script import initialize_script, cleanup_script, command_hoy, command_manana, command_semana
 
 
 # ---------------------------------------------------------- #
@@ -55,15 +56,17 @@ async def telegram_post(request):
 aio_app.router.add_get("/", index)
 aio_app.router.add_get(HEALTH_PATH, health)
 aio_app.router.add_post(WEBHOOK_PATH, telegram_post)
+aio_app.on_shutdown.append(cleanup_script)
 
 
 # Pa setear webhook
 # curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook -d "url=https://<DOMAIN>/api/webhook"
 
 async def start_bot():
+    logging.info("llamada a start_bot")
     # Inicializar código de aplicación
     initialize_script()
-
+    logging.info("script inicializado")
     # Crear la aplicación de telegram
     global telegram_app
     telegram_app = Application.builder().token(TOKEN).build()
@@ -71,7 +74,7 @@ async def start_bot():
     telegram_app.add_handler(CommandHandler('hoy', command_hoy))
     telegram_app.add_handler(CommandHandler('manana', command_manana))
     telegram_app.add_handler(CommandHandler('semana', command_semana))
-
+    logging.info("bot creado, handlers añadidos")
     webhook_url = f'{RENDER_URL}{WEBHOOK_PATH}'
     # Aquí usamos run_webhook pero sin bloquear el hilo principal: lo lanzamos como tarea
     await telegram_app.initialize()
@@ -79,7 +82,7 @@ async def start_bot():
     await telegram_app.bot.set_webhook(webhook_url)
     # Arrancar el dispatcher del bot sin bloquear: start() prepara y start_polling/start_webhook manejan io internamente
     await telegram_app.start()
-
+    logging.info("iniciada app de telegram")
     # Dejar el bot corriendo. run_webhook normalmente arranca su propio servidor;
     # en este ejemplo usaremos aiohttp + runner para servir la misma app que usará telegram
     runner = web.AppRunner(aio_app)
@@ -87,7 +90,7 @@ async def start_bot():
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
 
-    logging.info("✅ Iniciado")
+    logging.info("✅ Iniciado runner")
 
     # Mantener el servicio vivo
     while True:
