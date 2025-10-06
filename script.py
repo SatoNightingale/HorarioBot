@@ -11,17 +11,17 @@ from sql_utils import get_db_list
 
 
 # ---------------------------------------------------------- #
-#                          Globales                          #
+#               Inicialización / finalización                #
 # ---------------------------------------------------------- #
 
-def initialize_script():
+def initialize():
     global cuba_tz, connection
     # Zona horaria de Cuba
     cuba_tz = pytz.timezone('America/Havana')
     # horario = cargar_horario()
     connection = sqlite3.connect("datos.db")
 
-def cleanup_script():
+def cleanup():
     global connection
     connection.close()
 
@@ -53,16 +53,36 @@ def que_toca_manana(hoy: date) -> Dia | None:
     return que_toca_dia(hoy + timedelta(days=1))
 
 def que_toca_semana(hoy: date) -> list[Dia]:
-    ultimo_lunes = hoy - timedelta(days=hoy.weekday())
+    lunes = hoy - timedelta(days=hoy.weekday())
+    if hoy.weekday() >= 5:
+        lunes += timedelta(days=7)
     dias_semana = []
     for i in range(5):
-        dias_semana.append(que_toca_dia(ultimo_lunes + timedelta(days=i)))
+        dias_semana.append(que_toca_dia(lunes + timedelta(days=i)))
     return dias_semana
 
 
 # ---------------------------------------------------------- #
 #                Funciones de comandos del bot               #
 # ---------------------------------------------------------- #
+
+async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        update.effective_chat.id,
+        """<strong>El bot que te dice qué toca mañana</strong>
+        <i>Por Satoshi, el más raro del aula</i>
+
+        Este bot es para consultar el horario de clases del segundo año de la carrera de Ciencias de la Computación de la UCLV
+        Para usarlo, sólo pon alguno de estos comandos:
+        /hoy - te dice lo que hay hoy mismo en el horario
+        /manana - el horario de mañana (sí, telegram no deja ponerle la 'ñ')
+        /semana - el horario de esta semana. Si es fin de semana, te dirá el horario de la semana próxima
+        /excel - envía el documento Excel con el horario. Útil para comprobar, porque de todas maneras, esto puede tener errores
+
+        Pronto pienso agregarle más cosas, y por supuesto, estoy abierto a recomendaciones. Escríbanle a @SatoNightingale si tienen algún problema, pero no lo atosiguen mucho porque estamos en pruebas (ni que él estudiara)
+        """,
+        parse_mode=ParseMode.HTML
+    )
 
 async def command_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -100,3 +120,7 @@ async def command_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         tb_str = traceback.format_exc()
         await context.bot.send_message(update.effective_chat.id, f"Ha ocurrido un error:\n{type(e).__name__} - {e}\n{tb_str}")
+
+async def command_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    with open("P42doCC0510.xlsx", 'rb') as excel:
+        await context.bot.send_document(update.effective_chat.id, document=excel)
