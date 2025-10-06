@@ -90,7 +90,9 @@ async def start_bot():
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
 
-    logging.info("✅ Iniciado runner")
+    
+
+    logging.info("✅ Iniciado")
 
     # Mantener el servicio vivo
     while True:
