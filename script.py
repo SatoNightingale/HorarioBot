@@ -21,6 +21,10 @@ def initialize_script():
     # horario = cargar_horario()
     connection = sqlite3.connect("datos.db")
 
+def cleanup_script():
+    global connection
+    connection.close()
+
 
 # ---------------------------------------------------------- #
 #                     Funciones útiles                       #

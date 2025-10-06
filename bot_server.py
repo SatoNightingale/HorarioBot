@@ -5,7 +5,7 @@ import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler
 from aiohttp import web
-from script import initialize_script, command_hoy, command_manana, command_semana
+from script import initialize_script, cleanup_script, command_hoy, command_manana, command_semana
 
 
 # ---------------------------------------------------------- #
@@ -55,6 +55,7 @@ async def telegram_post(request):
 aio_app.router.add_get("/", index)
 aio_app.router.add_get(HEALTH_PATH, health)
 aio_app.router.add_post(WEBHOOK_PATH, telegram_post)
+aio_app.on_shutdown.append(cleanup_script)
 
 
 # Pa setear webhook
@@ -86,6 +87,8 @@ async def start_bot():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
+
+    
 
     logging.info("✅ Iniciado")
 
