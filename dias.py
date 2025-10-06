@@ -1,12 +1,12 @@
 from datetime import date
 import sqlite3
-from sql_utils import get_db_entry, get_db_list
+from sql_utils import get_db_entry
 
 
 nombre_turnos = {
-    1: "Primera",
-    2: "Segunda",
-    3: "Tercera"
+    1: "1️⃣ <i>Primera</i>",
+    2: "2️⃣ <i>Segunda</i>",
+    3: "3️⃣ <i>Tercera</i>"
 }
 
 meses = {
@@ -66,12 +66,12 @@ class Turno:
                 turno_texto = f"{self.asignatura} ({self.modificador})"
             if not self.es_cp:
                 profesor = self.profesor_principal()
-                turno_texto += f"\n  Profesor: {profesor}"
+                turno_texto += f"\n  <i>Profesor</i>: {profesor}"
             else:
                 profesores = self.profesores_clase_practica()
                 if len(profesores) > 0:
-                    profes_text = '\n'.join([f'  - {p}' for p in profesores])
-                    turno_texto += f"\n  Profesor de clase práctica:\n{profes_text}"
+                    profes_text = '\n'.join([f'  • {p}' for p in profesores])
+                    turno_texto += f"\n  <i>Profesor de clase práctica</i>:\n{profes_text}"
         elif self.otro:
             turno_texto = self.otro
         
@@ -115,23 +115,23 @@ class Dia:
     
     def __str__(self):
         fecha = f"{dias_semana[self.fecha.weekday()].capitalize()}, {self.fecha.day} de {meses[self.fecha.month]} de {self.fecha.year}"
-
-        manana = ['Mañana']
+        
+        manana = ['<strong><u>🌅 Mañana</u></strong>']
         manana_libre = True
         for i, turno in enumerate(self.turnos[0:3]):
             manana.append(f"{nombre_turnos[i+1]}: {turno}")
             if not turno.esLibre():
                 manana_libre = False
         
-        tarde = ['Tarde']
+        tarde = ['<strong><u>🌄 Tarde</u></strong>']
         tarde_libre = True
         for i, turno in enumerate(self.turnos[3:6]):
             tarde.append(f"{nombre_turnos[i+1]}: {turno}")
             if not turno.esLibre():
                 tarde_libre = False
         
-        if manana_libre: manana = ['Mañana', '\tLibre']
-        if tarde_libre: tarde = ['Tarde', '\tLibre']
+        if manana_libre: manana = ['Mañana', '👋 Libre']
+        if tarde_libre: tarde = ['Tarde', '👋 Libre']
 
         ret = '\n'.join([fecha] + manana + tarde)
         return ret
